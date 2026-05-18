@@ -26,7 +26,8 @@ export const transactionFormSchema = z.object({
   categoryId: z.coerce.number().int().positive('Seleccioná una categoría'),
 })
 
-export type TransactionFormInput = z.infer<typeof transactionFormSchema>
+export type TransactionFormValues = z.input<typeof transactionFormSchema>
+export type TransactionFormInput = z.output<typeof transactionFormSchema>
 
 export const transactionFiltersSchema = z.object({
   type: transactionTypeEnum.optional(),
