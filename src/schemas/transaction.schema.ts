@@ -3,6 +3,13 @@ import { transactionTypeEnum, categorySchema } from './category.schema'
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato: YYYY-MM-DD')
 
+export const transactionUserSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+})
+
+export type TransactionUser = z.infer<typeof transactionUserSchema>
+
 export const transactionSchema = z.object({
   id: z.number().int(),
   type: transactionTypeEnum,
@@ -12,6 +19,7 @@ export const transactionSchema = z.object({
   categoryId: z.number().int(),
   category: categorySchema.optional(),
   userId: z.number().int(),
+  user: transactionUserSchema.optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 })

@@ -303,6 +303,7 @@ export function TransactionsPage() {
                     <TableHead className="w-[110px]">Tipo</TableHead>
                     <TableHead>Categoría</TableHead>
                     <TableHead>Descripción</TableHead>
+                    <TableHead className="w-[140px]">Usuario</TableHead>
                     <TableHead className="text-right">Monto</TableHead>
                     {isAdmin && <TableHead className="w-[90px]" />}
                   </TableRow>
@@ -321,6 +322,9 @@ export function TransactionsPage() {
                       </TableCell>
                       <TableCell className="truncate max-w-[260px] text-muted-foreground">
                         {tx.description || '—'}
+                      </TableCell>
+                      <TableCell className="truncate max-w-[140px] text-muted-foreground text-xs">
+                        {tx.user?.name ?? '—'}
                       </TableCell>
                       <TableCell
                         className={cn(

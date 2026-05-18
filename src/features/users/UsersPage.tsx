@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -13,6 +14,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -36,7 +44,11 @@ import { useAuth } from '@/features/auth/useAuth'
 import { UserForm } from './UserForm'
 import { formatDate } from '@/lib/utils'
 import type { User } from '@/schemas/auth.schema'
-import type { UserCreateInput, UserUpdateInput } from '@/schemas/user.schema'
+import type {
+  UserCreateInput,
+  UserListItem,
+  UserUpdateInput,
+} from '@/schemas/user.schema'
 
 export function UsersPage() {
   const currentUserId = useAuth((s) => s.user?.id)
@@ -44,14 +56,19 @@ export function UsersPage() {
 
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<User | null>(null)
-  const [deleting, setDeleting] = useState<User | null>(null)
+  const [deleting, setDeleting] = useState<UserListItem | null>(null)
+  const [reassignTo, setReassignTo] = useState<string>('')
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['users'],
     queryFn: () => usersApi.list(),
   })
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['users'] })
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['users'] })
+    queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    queryClient.invalidateQueries({ queryKey: ['summary'] })
+  }
 
   const createMutation = useMutation({
     mutationFn: (input: UserCreateInput) => usersApi.create(input),
@@ -75,19 +92,30 @@ export function UsersPage() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => usersApi.remove(id),
+    mutationFn: ({ id, reassignTo }: { id: number; reassignTo?: number }) =>
+      usersApi.remove(id, reassignTo),
     onSuccess: () => {
       toast.success('Usuario eliminado')
       invalidate()
       setDeleting(null)
+      setReassignTo('')
     },
-    onError: (err: ApiRequestError) => {
-      toast.error(err.message)
-      setDeleting(null)
-    },
+    onError: (err: ApiRequestError) => toast.error(err.message),
   })
 
   const users = data ?? []
+
+  const reassignOptions = useMemo(
+    () => users.filter((u) => u.id !== deleting?.id),
+    [users, deleting?.id]
+  )
+
+  useEffect(() => {
+    if (!deleting) setReassignTo('')
+  }, [deleting])
+
+  const hasTransactions = (deleting?._count.transactions ?? 0) > 0
+  const canConfirmDelete = !hasTransactions || reassignTo !== ''
 
   return (
     <div className="space-y-6">
@@ -123,6 +151,7 @@ export function UsersPage() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead className="w-[100px]">Rol</TableHead>
+                  <TableHead className="w-[100px] text-right">Transacc.</TableHead>
                   <TableHead className="w-[110px]">Creado</TableHead>
                   <TableHead className="w-[100px]" />
                 </TableRow>
@@ -143,6 +172,9 @@ export function UsersPage() {
                         <Badge variant={u.role === 'ADMIN' ? 'default' : 'secondary'}>
                           {u.role}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {u._count.transactions}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs">
                         {u.createdAt ? formatDate(u.createdAt) : '—'}
@@ -215,23 +247,57 @@ export function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
+      <AlertDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
             <AlertDialogDescription>
-              Vas a borrar <strong>{deleting?.name}</strong> ({deleting?.email}). Si tiene
-              transacciones asociadas la operación va a fallar.
+              Vas a borrar <strong>{deleting?.name}</strong> ({deleting?.email}).
+              {hasTransactions ? (
+                <>
+                  {' '}Tiene{' '}
+                  <strong>{deleting?._count.transactions} transacciones</strong>{' '}
+                  asociadas — elegí a quién reasignárselas antes de continuar.
+                </>
+              ) : (
+                ' Esta acción no se puede deshacer.'
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {hasTransactions && (
+            <div className="space-y-2">
+              <Label htmlFor="reassignTo">Reasignar transacciones a</Label>
+              <Select value={reassignTo} onValueChange={setReassignTo}>
+                <SelectTrigger id="reassignTo">
+                  <SelectValue placeholder="Seleccioná un usuario" />
+                </SelectTrigger>
+                <SelectContent>
+                  {reassignOptions.map((u) => (
+                    <SelectItem key={u.id} value={String(u.id)}>
+                      {u.name} ({u.role})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteMutation.isPending}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault()
-                if (deleting) deleteMutation.mutate(deleting.id)
+                if (!deleting || !canConfirmDelete) return
+                deleteMutation.mutate({
+                  id: deleting.id,
+                  reassignTo: reassignTo ? Number(reassignTo) : undefined,
+                })
               }}
-              disabled={deleteMutation.isPending}
+              disabled={deleteMutation.isPending || !canConfirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending && <Loader2 className="size-4 animate-spin" />}

@@ -4,7 +4,10 @@ import { roleEnum, userSchema } from './auth.schema'
 export { roleEnum }
 export type { User, Role } from './auth.schema'
 
-export const userListItemSchema = userSchema
+export const userListItemSchema = userSchema.extend({
+  _count: z.object({ transactions: z.number().int().nonnegative() }),
+})
+export type UserListItem = z.infer<typeof userListItemSchema>
 
 export const userCreateSchema = z.object({
   email: z.email('Email inválido').trim(),
