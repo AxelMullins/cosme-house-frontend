@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/shared/AppLayout'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { TransactionsPage } from '@/features/transactions/TransactionsPage'
 import { CategoriesPage } from '@/features/categories/CategoriesPage'
+import { UsersPage } from '@/features/users/UsersPage'
 
 export const router = createBrowserRouter([
   {
@@ -20,6 +21,10 @@ export const router = createBrowserRouter([
           { path: '/', element: <DashboardPage /> },
           { path: '/transactions', element: <TransactionsPage /> },
           { path: '/categories', element: <CategoriesPage /> },
+          {
+            element: <ProtectedRoute requireRole="ADMIN" />,
+            children: [{ path: '/users', element: <UsersPage /> }],
+          },
         ],
       },
     ],

@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, ArrowLeftRight, Tags, LogOut, Wallet } from 'lucide-react'
+import { LayoutDashboard, ArrowLeftRight, Tags, LogOut, Wallet, Users } from 'lucide-react'
+import type { Role } from '@/schemas/auth.schema'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -13,10 +14,19 @@ import {
 import { useAuth } from '@/features/auth/useAuth'
 import { cn } from '@/lib/utils'
 
-const navItems = [
+interface NavItem {
+  to: string
+  label: string
+  icon: typeof LayoutDashboard
+  end?: boolean
+  requireRole?: Role
+}
+
+const navItems: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/transactions', label: 'Transacciones', icon: ArrowLeftRight },
   { to: '/categories', label: 'Categorías', icon: Tags },
+  { to: '/users', label: 'Usuarios', icon: Users, requireRole: 'ADMIN' },
 ]
 
 export function AppLayout() {
@@ -47,24 +57,26 @@ export function AppLayout() {
           <span className="font-semibold">Cosme House</span>
         </div>
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                )
-              }
-            >
-              <item.icon className="size-4" />
-              {item.label}
-            </NavLink>
-          ))}
+          {navItems
+            .filter((item) => !item.requireRole || item.requireRole === user?.role)
+            .map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                  )
+                }
+              >
+                <item.icon className="size-4" />
+                {item.label}
+              </NavLink>
+            ))}
         </nav>
       </aside>
 

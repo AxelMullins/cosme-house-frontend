@@ -39,7 +39,7 @@ Frontend del finance tracker de Cosme House (negocio de productos de diseño: l�
 
 ---
 
-## ✅ Implementado (Fases 1-5)
+## ✅ Implementado (Fases 1-10)
 
 ### Fase 1 — Setup
 - Vite + React + TS scaffold
@@ -70,90 +70,52 @@ Frontend del finance tracker de Cosme House (negocio de productos de diseño: l�
 ### Fase 5 — Dashboard
 - `src/features/dashboard/DashboardPage.tsx`: 3 KPIs (Ingresos / Gastos / Balance) + lista de desglose por categoría
 - Empty state cuando no hay transacciones
-- Falta: date range picker + chart de Recharts
+
+### Fase 6 — CRUD de Categorías
+- `src/features/categories/CategoryForm.tsx` reutilizable (crear/editar) con RHF + Zod
+- `CategoriesPage.tsx`: botón "Nueva categoría" admin-only, filtros chip Todas/Ingresos/Gastos, edit/delete por fila, `AlertDialog` de confirmación
+- Manejo específico del **409** (`CATEGORY_IN_USE`) → toast "No se puede borrar — tiene transacciones asociadas"
+- Mutations invalidan `['categories']` y `['summary']`
+
+### Fase 7 — CRUD de Transacciones
+- `src/features/transactions/TransactionForm.tsx`: type / amount / date / category (filtrada por type, se resetea con un `useEffect` cuando el type cambia) / description
+- ⚠️ Para que `z.coerce.number()` no rompa los tipos de RHF: el schema exporta `TransactionFormValues = z.input` (entrada del form) y `TransactionFormInput = z.output` (después de coerce). El form usa `useForm<Values, unknown, Output>` así `handleSubmit` recibe los tipos transformados
+- `TransactionsPage.tsx`: filtros sincronizados con URL params via `useSearchParams` (`type`, `categoryId`, `from`, `to`, `page`), tabla con `Badge` por tipo, paginación con `keepPreviousData`, acciones admin-only
+
+### Fase 8 — Polish del Dashboard
+- DateRangePicker con inputs `type="date"` nativos (decisión: no instalar `react-day-picker` para evitar nueva dep; upgrade pendiente si se quiere calendar popover)
+- Donut chart con Recharts (`PieChart`): paleta verde para INCOME, roja para EXPENSE
+- `<Skeleton>` loaders para KPIs, chart y lista de recientes
+- Card "Últimas 5 transacciones" con link "Ver todas → /transactions"
+
+### Fase 9 — Deploy a Vercel
+- Frontend desplegado en Vercel; auto-deploy en push a `main`
+- Env `VITE_API_BASE_URL` configurada apuntando a `https://cosme-house-backend.onrender.com/api`
+- CORS del backend abierto a todos los origins (ver nota de seguridad abajo)
+
+### Fase 10 — CRUD de Usuarios
+
+**Backend** (`cosme-house-backend`):
+- `src/services/user.service.js` con `PUBLIC_USER_SELECT` (excluye `password`); hash bcrypt salt 10 en create/update
+- `src/controllers/user.controller.js` con validación Zod (create: `password.min(8)` + `role`; update: todos opcionales)
+- `src/routes/user.routes.js` con `authenticate` + `requireRole('ADMIN')` a nivel router
+- Registrado en `src/app.js` bajo `/api/users`
+- Protecciones de seguridad:
+  - `CANNOT_CHANGE_OWN_ROLE` (400) si el actor intenta cambiar su propio rol
+  - `CANNOT_DELETE_SELF` (400) si el actor intenta borrarse a sí mismo
+  - `USER_IN_USE` (409) si el usuario tiene transacciones asociadas
+  - `DUPLICATE_EMAIL` (409) en create/update con email existente
+
+**Frontend**:
+- `src/schemas/user.schema.ts`: re-export de `User`/`Role` desde `auth.schema` + `userCreateSchema` (password requerido) y `userUpdateSchema` (password opcional con transform `''` → `undefined`)
+- `src/api/users.api.ts`: list/create/update/remove
+- `src/features/users/UserForm.tsx`: forms separados create/edit; en edit el campo password tiene placeholder *"Dejar vacío para no cambiar"*, el select de rol se deshabilita si estás editándote a vos mismo (`disableRole`)
+- `src/features/users/UsersPage.tsx`: tabla con badge de rol, marca `(vos)` en tu propia fila, botón eliminar deshabilitado para uno mismo
+- Ruta `/users` envuelta en `<ProtectedRoute requireRole="ADMIN" />` en `routes.tsx`
+- Ítem "Usuarios" en sidebar de `AppLayout.tsx` filtrado por `requireRole` admin-only
 
 ### Componentes shadcn implementados
-`button`, `input`, `label`, `card`, `separator`, `dropdown-menu`, `avatar`, `sonner`
-
----
-
-## 🚧 Pendiente (Fases 6-9)
-
-### Fase 6 — CRUD de Categorías (~1h)
-
-**Goal**: completar `src/features/categories/CategoriesPage.tsx` con CRUD funcional.
-
-**Componentes shadcn a agregar** (`npx shadcn@latest add <name>` o copiar de https://ui.shadcn.com):
-- `dialog` — modal de crear/editar
-- `select` — selector de tipo (INCOME/EXPENSE)
-- `alert-dialog` — confirmación de borrar
-- `table` — listado tabular (opcional, el grid actual también sirve)
-
-**A implementar**:
-1. Header con botón "Nueva categoría" (solo visible si `user.role === 'ADMIN'`)
-2. Filtro por tipo (botones segmentados: Todas / Ingresos / Gastos)
-3. Componente `<CategoryForm>` reutilizable (creación + edición) con React Hook Form + `categoryFormSchema`
-4. Mutations con TanStack Query:
-   - `useMutation` para create/update/delete
-   - `onSuccess`: `queryClient.invalidateQueries({ queryKey: ['categories'] })`
-5. AlertDialog antes de borrar
-6. Manejo de error 409 (categoría con transacciones) → mostrar toast claro: "No se puede borrar — tiene transacciones asociadas"
-
-**Tip**: el rol del usuario está en `useAuth((s) => s.user?.role)`. Las acciones de admin deberían estar ocultas para `VIEWER`.
-
-### Fase 7 — CRUD de Transacciones (~2h)
-
-**Goal**: completar `src/features/transactions/TransactionsPage.tsx`.
-
-**Componentes shadcn a agregar**:
-- `table` — listado paginado
-- `dialog`, `select`, `alert-dialog` (si no están de Fase 6)
-- `popover` + `calendar` — date picker (instalar `react-day-picker` si se usa el calendar de shadcn)
-- `badge` — para el tipo INCOME/EXPENSE
-
-**A implementar**:
-1. Filtros sincronizados con URL params:
-   - `type` (INCOME/EXPENSE/all)
-   - `categoryId`
-   - `from` / `to` (date range)
-   - `page` (paginación)
-   - Usar `useSearchParams` de React Router
-2. Tabla con columnas: Fecha, Tipo (badge), Categoría, Descripción, Monto (formateado con `formatCurrency`), Acciones
-3. Paginación inferior con info de total y botones prev/next
-4. `<TransactionForm>` con campos: type, amount, date, categoryId (select cargado con `categoriesApi.list({type})`), description
-5. ⚠️ **`amount` viene como string del backend** → en el form usar `coerce.number()` (ya está en `transactionFormSchema`), para mostrar parsear y formatear con `formatCurrency`
-6. Acciones de crear/editar/borrar solo visibles para ADMIN
-
-### Fase 8 — Polish del Dashboard (~1.5h)
-
-**Componentes a agregar**:
-- `popover` + `calendar` para el date range
-- Chart de Recharts (PieChart o BarChart) en `DashboardPage`
-
-**A implementar**:
-1. `<DateRangePicker>` arriba del dashboard. Estado en URL o en useState local, pasarlo a `summaryApi.get({ from, to })`
-2. Chart de breakdown por categoría:
-   - Donut chart con todas las categorías (color verde para INCOME, rojo para EXPENSE)
-   - O dos bar charts uno al lado del otro (income vs expense)
-3. Skeleton loaders durante carga (usar `<Skeleton>` de shadcn)
-4. Ultimas 5 transacciones (usar `transactionsApi.list({ limit: 5 })`)
-
-### Fase 9 — Deploy a Vercel (~15 min)
-
-1. Push a GitHub el repo del frontend (crear repo si no existe)
-2. Conectar a Vercel desde su dashboard (https://vercel.com)
-3. Vercel detecta Vite automáticamente
-4. Agregar env var: `VITE_API_BASE_URL=https://cosme-house-backend.onrender.com/api`
-5. Deploy
-6. **Actualizar CORS del backend**:
-   ```js
-   // cosme-house-backend/src/app.js
-   app.use(cors({
-     origin: ['https://TU-DOMINIO.vercel.app', 'http://localhost:5173'],
-     credentials: true
-   }))
-   ```
-   Commit + push → Render redeploya solo.
+`button`, `input`, `label`, `card`, `separator`, `dropdown-menu`, `avatar`, `sonner`, `dialog`, `select`, `alert-dialog`, `badge`, `table`, `skeleton`, `popover`
 
 ---
 
@@ -216,18 +178,32 @@ npx shadcn@latest add skeleton
 2. ✅ `npm install` (si es PC distinta)
 3. ✅ Verificar que `.env` tiene `VITE_API_BASE_URL`
 4. ✅ `npm run dev` → http://localhost:5173
-5. ✅ Login con `admin@test.com` / `password123` para verificar que el backend responde
-6. 🚧 Arrancar por **Fase 6** (Categorías CRUD): es la más simple y deja el patrón establecido para Fase 7
-7. 🚧 Antes de empezar, agregar los componentes shadcn que vas a usar:
-   ```bash
-   npx shadcn@latest add dialog select alert-dialog
-   ```
+5. ✅ Login con admin (cambiar `admin@test.com` por el real desde la página de Usuarios)
+6. ✅ Fases 6-10 implementadas
+
+---
+
+## Pendiente / mejoras futuras
+
+- **`react-day-picker` + shadcn `calendar`**: reemplazar los `<input type="date">` nativos por un popover con calendar para una UX más fluida en filtros de Dashboard y Transacciones.
+- **Code splitting**: el bundle final es ~1MB (Recharts es el principal culpable). Considerar `React.lazy` para la página de Dashboard o `rolldownOptions.output.codeSplitting`.
+- **Drawer mobile**: la sidebar está oculta en mobile (`hidden md:flex`). Falta un drawer/hamburger para navegar.
+- **Soft-delete de usuarios**: hoy el delete es físico; se podría agregar `active: boolean` al modelo `User` y filtrar inactivos en el login + lista.
 
 ---
 
 ## Notas de seguridad / producción
 
-- **CORS abierto a todo** en el backend (`cosme-house-backend/src/app.js:13`). Restringir antes de exponer el frontend en producción.
-- **Password admin hardcodeada** en seed (`prisma/seed.js:20`). Cambiar antes de tener usuarios reales.
-- **JWT en localStorage**: vulnerable a XSS. Para MVP está OK, en una v2 considerar httpOnly cookies (requiere ajustes en el backend para usar cookies en vez de header `Authorization`).
-- **Sin rate limiting** en el backend. Para producción seria, agregar `express-rate-limit`.
+### Aplicado
+- **CORS restringido** a `https://cosme-house-frontend.vercel.app` y `http://localhost:5173`. Si en el futuro Vercel asigna un dominio custom o se usan preview deploys, agregarlos a `ALLOWED_ORIGINS` en `cosme-house-backend/src/app.js`.
+- **Auth revalida user en DB** (`middlewares/auth.js`): el JWT ya no se confía solo — cada request lee `role` desde Postgres. Demote/delete tienen efecto inmediato.
+- **Self-signup eliminado**: `POST /api/auth/register` removido. La única vía de creación es la página de Usuarios (admin only).
+- **Email trim + password max 72 bytes** en `auth.controller.js` y `user.controller.js` (límite real de bcrypt).
+- **Self-protection en `/api/users`**: no podés borrarte ni cambiar tu propio rol.
+
+### Deprioritized (no hay usuarios reales — solo Axel)
+- **JWT en localStorage**: vulnerable a XSS. Migrar a httpOnly cookies + CSRF tokens es un refactor grande; sin usuarios externos, riesgo bajo.
+- **Sin rate limiting** en `/api/auth/login` ni `/api/users`. Agregar `express-rate-limit` (5 intentos / 15 min por IP) si alguna vez el API queda expuesto a tráfico real.
+- **Política de password débil** (solo `min(8)`). Reforzar con regex de complejidad si se incorporan VIEWERs externos.
+- **Password admin hardcodeada en seed**: ya no es problema operativo — desde la UI podés crear tu admin real y borrar el de seed. Si vas a re-seedear la DB, cambiarla.
+- **Sin audit log** de acciones admin (crear/eliminar usuarios, transacciones). Para un negocio con varios usuarios sería un must.
