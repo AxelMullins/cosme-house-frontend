@@ -1,7 +1,26 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(node -c src/services/user.service.js)",
+      "Bash(node -c src/controllers/user.controller.js)",
+      "Bash(node -c src/routes/user.routes.js)",
+      "Bash(node -c src/app.js)",
+      "Bash(node -c src/middlewares/auth.js)",
+      "Bash(node -c src/routes/auth.routes.js)",
+      "Bash(node -c src/controllers/auth.controller.js)",
+      "Bash(node -c src/services/auth.service.js)",
+      "Bash(git -C \"C:/Users/Usuario/AXEL/Cosme House/cosme-house-frontend\" status --short)",
+      "Bash(git -C \"C:/Users/Usuario/AXEL/Cosme House/cosme-house-frontend\" remote -v)",
+      "Bash(git -C \"C:/Users/Usuario/AXEL/Cosme House/cosme-house-frontend\" branch --show-current)",
+      "Bash(git -C \"C:/Users/Usuario/AXEL/Cosme House/cosme-house-frontend\" log --oneline -5)",
+      "Bash(git -C \"C:/Users/Usuario/AXEL/Cosme House/cosme-house-backend\" status --short)",
+      "Bash(git -C \"C:/Users/Usuario/AXEL/Cosme House/cosme-house-backend\" remote -v)",
+      "Bash(git -C \"C:/Users/Usuario/AXEL/Cosme House/cosme-house-backend\" branch --show-current)",
+      "Bash(git -C \"C:/Users/Usuario/AXEL/Cosme House/cosme-house-backend\" log --oneline -5)",
+      "Bash(git -C \"C:/Users/Usuario/AXEL/Cosme House/cosme-house-frontend\" check-ignore -v .claude/settings.local.json)",
+      "Bash(git -C \"C:/Users/Usuario/AXEL/Cosme House/cosme-house-frontend\" ls-files .gitignore)",
+      "Bash(git *)"
     ]
   }
 }
