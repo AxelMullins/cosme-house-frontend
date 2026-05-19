@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
+import { useIsMobile } from '@/lib/hooks/useIsMobile'
 
 interface DateRange {
   from?: string
@@ -53,7 +54,7 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between gap-4 flex-wrap">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground text-sm">
@@ -61,29 +62,28 @@ export function DashboardPage() {
           </p>
         </div>
 
-        <div className="flex items-end gap-2 flex-wrap">
-          <div className="space-y-1">
+        <div className="flex items-end gap-2">
+          <div className="space-y-1 flex-1 md:flex-none">
             <Label className="text-xs text-muted-foreground">Desde</Label>
             <Input
               type="date"
               value={range.from ?? ''}
               onChange={(e) => setRange((r) => ({ ...r, from: e.target.value || undefined }))}
-              className="w-[150px]"
+              className="w-full md:w-[150px]"
             />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 flex-1 md:flex-none">
             <Label className="text-xs text-muted-foreground">Hasta</Label>
             <Input
               type="date"
               value={range.to ?? ''}
               onChange={(e) => setRange((r) => ({ ...r, to: e.target.value || undefined }))}
-              className="w-[150px]"
+              className="w-full md:w-[150px]"
             />
           </div>
           {hasRange && (
-            <Button variant="outline" size="sm" onClick={() => setRange({})}>
+            <Button variant="outline" size="icon" onClick={() => setRange({})} aria-label="Limpiar fechas">
               <X className="size-4" />
-              Limpiar
             </Button>
           )}
         </div>
@@ -104,7 +104,7 @@ type SummaryQuery = ReturnType<typeof useQuery<Awaited<ReturnType<typeof summary
 function KPISection({ query }: { query: SummaryQuery }) {
   if (query.isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
         {[0, 1, 2].map((i) => (
           <Card key={i}>
             <CardHeader className="pb-2">
@@ -134,7 +134,7 @@ function KPISection({ query }: { query: SummaryQuery }) {
   const balanceColor = balance >= 0 ? 'text-emerald-600' : 'text-destructive'
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
       <KPICard
         title="Ingresos"
         value={formatCurrency(data.totalIncome)}
@@ -152,6 +152,7 @@ function KPISection({ query }: { query: SummaryQuery }) {
         value={formatCurrency(data.balance)}
         icon={<Wallet className="size-5 text-muted-foreground" />}
         valueClassName={balanceColor}
+        className="col-span-2 md:col-span-1"
       />
     </div>
   )
@@ -162,17 +163,18 @@ interface KPICardProps {
   value: string
   icon: React.ReactNode
   valueClassName?: string
+  className?: string
 }
 
-function KPICard({ title, value, icon, valueClassName }: KPICardProps) {
+function KPICard({ title, value, icon, valueClassName, className }: KPICardProps) {
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         {icon}
       </CardHeader>
       <CardContent>
-        <div className={cn('text-2xl font-bold tabular-nums', valueClassName)}>{value}</div>
+        <div className={cn('text-xl md:text-2xl font-bold tabular-nums', valueClassName)}>{value}</div>
       </CardContent>
     </Card>
   )
@@ -194,6 +196,10 @@ function CategoryBreakdownCard({ query }: { query: SummaryQuery }) {
       }
     })
   }, [query.data])
+
+  const isMobile = useIsMobile()
+  const innerRadius = isMobile ? 45 : 55
+  const outerRadius = isMobile ? 75 : 95
 
   return (
     <Card>
@@ -217,8 +223,8 @@ function CategoryBreakdownCard({ query }: { query: SummaryQuery }) {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  innerRadius={55}
-                  outerRadius={95}
+                  innerRadius={innerRadius}
+                  outerRadius={outerRadius}
                   paddingAngle={2}
                 >
                   {chartData.map((entry) => (
@@ -228,7 +234,7 @@ function CategoryBreakdownCard({ query }: { query: SummaryQuery }) {
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Legend
                   verticalAlign="bottom"
-                  height={36}
+                  wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }}
                   formatter={(value) => <span className="text-xs">{value}</span>}
                 />
               </PieChart>
