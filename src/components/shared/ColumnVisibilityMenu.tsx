@@ -27,8 +27,13 @@ export function ColumnVisibilityMenu<K extends string>({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Columns3 className="size-4" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          aria-label="Configurar columnas visibles"
+        >
+          <Columns3 className="size-4" aria-hidden="true" />
           <span className="hidden sm:inline">Columnas</span>
           <span className="text-xs text-muted-foreground tabular-nums">
             {visibleCount}/{columns.length}
@@ -43,10 +48,10 @@ export function ColumnVisibilityMenu<K extends string>({
               <button
                 key={col.id}
                 type="button"
+                role="menuitemcheckbox"
+                aria-checked={isOn}
                 onClick={() => toggle(col.id)}
-                className={cn(
-                  'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground'
-                )}
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:outline-none"
               >
                 <span
                   className={cn(
