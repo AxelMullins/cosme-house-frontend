@@ -93,7 +93,7 @@ export function CategoriesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold">Categorías</h1>
           <p className="text-muted-foreground text-sm">Tipos de ingreso y gasto disponibles</p>
@@ -101,12 +101,12 @@ export function CategoriesPage() {
         {isAdmin && (
           <Button onClick={() => setCreating(true)}>
             <Plus className="size-4" />
-            Nueva categoría
+            <span className="hidden sm:inline">Nueva categoría</span>
           </Button>
         )}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <FilterChip active={filter === 'ALL'} onClick={() => setFilter('ALL')}>
           Todas
         </FilterChip>
@@ -146,7 +146,7 @@ export function CategoriesPage() {
                       cat.type === 'INCOME' ? 'bg-emerald-500' : 'bg-destructive'
                     )}
                   />
-                  <span className="text-sm flex-1 truncate">{cat.name}</span>
+                  <span className="text-sm flex-1 min-w-0 truncate">{cat.name}</span>
                   <Badge variant={cat.type === 'INCOME' ? 'success' : 'danger'}>
                     {cat.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
                   </Badge>
@@ -155,7 +155,7 @@ export function CategoriesPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-8"
+                        className="size-9 md:size-8"
                         onClick={() => setEditing(cat)}
                         aria-label={`Editar ${cat.name}`}
                       >
@@ -164,7 +164,7 @@ export function CategoriesPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-8 text-destructive hover:text-destructive"
+                        className="size-9 md:size-8 text-destructive hover:text-destructive"
                         onClick={() => setDeleting(cat)}
                         aria-label={`Eliminar ${cat.name}`}
                       >

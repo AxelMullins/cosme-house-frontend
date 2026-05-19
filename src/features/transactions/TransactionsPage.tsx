@@ -59,6 +59,23 @@ import type {
   TransactionFormInput,
 } from '@/schemas/transaction.schema'
 import type { TransactionType } from '@/schemas/category.schema'
+import { ColumnVisibilityMenu } from '@/components/shared/ColumnVisibilityMenu'
+import {
+  useColumnVisibility,
+  type ColumnDef,
+} from '@/lib/hooks/useColumnVisibility'
+
+type TxColumnId = 'date' | 'type' | 'category' | 'description' | 'user' | 'amount' | 'actions'
+
+const TX_COLUMNS: readonly ColumnDef<TxColumnId>[] = [
+  { id: 'date', label: 'Fecha' },
+  { id: 'type', label: 'Tipo' },
+  { id: 'category', label: 'Categoría' },
+  { id: 'description', label: 'Descripción', defaultVisibleMobile: false },
+  { id: 'user', label: 'Usuario', defaultVisibleMobile: false },
+  { id: 'amount', label: 'Monto' },
+  { id: 'actions', label: 'Acciones' },
+]
 
 const PAGE_SIZE = 20
 const ALL = '__all__'
@@ -187,24 +204,39 @@ export function TransactionsPage() {
     filters.from !== undefined ||
     filters.to !== undefined
 
+  const visibleColumns = useMemo(() => TX_COLUMNS.filter((c) => c.id !== 'actions' || isAdmin), [isAdmin])
+  const [columns, setColumns] = useColumnVisibility<TxColumnId>('cols:transactions', visibleColumns)
+
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold">Transacciones</h1>
           <p className="text-muted-foreground text-sm">Ingresos y gastos registrados</p>
         </div>
-        {isAdmin && (
-          <Button onClick={() => setCreating(true)}>
-            <Plus className="size-4" />
-            Nueva transacción
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={clearFilters}
+              aria-label="Limpiar filtros"
+            >
+              <X className="size-4" />
+            </Button>
+          )}
+          {isAdmin && (
+            <Button onClick={() => setCreating(true)}>
+              <Plus className="size-4" />
+              <span className="hidden sm:inline">Nueva transacción</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Tipo</Label>
               <Select
@@ -261,25 +293,15 @@ export function TransactionsPage() {
                 onChange={(e) => updateParam('to', e.target.value || undefined)}
               />
             </div>
-
-            <div className="flex items-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearFilters}
-                disabled={!hasActiveFilters}
-                className="w-full"
-              >
-                <X className="size-4" />
-                Limpiar
-              </Button>
-            </div>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardContent className="pt-6">
+          <div className="flex justify-end mb-3">
+            <ColumnVisibilityMenu columns={visibleColumns} visible={columns} onChange={setColumns} />
+          </div>
           {isLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -296,77 +318,89 @@ export function TransactionsPage() {
             </p>
           ) : (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[110px]">Fecha</TableHead>
-                    <TableHead className="w-[110px]">Tipo</TableHead>
-                    <TableHead>Categoría</TableHead>
-                    <TableHead>Descripción</TableHead>
-                    <TableHead className="w-[140px]">Usuario</TableHead>
-                    <TableHead className="text-right">Monto</TableHead>
-                    {isAdmin && <TableHead className="w-[90px]" />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.map((tx) => (
-                    <TableRow key={tx.id}>
-                      <TableCell>{formatDate(tx.date)}</TableCell>
-                      <TableCell>
-                        <Badge variant={tx.type === 'INCOME' ? 'success' : 'danger'}>
-                          {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="truncate max-w-[160px]">
-                        {tx.category?.name ?? '—'}
-                      </TableCell>
-                      <TableCell className="truncate max-w-[260px] text-muted-foreground">
-                        {tx.description || '—'}
-                      </TableCell>
-                      <TableCell className="truncate max-w-[140px] text-muted-foreground text-xs">
-                        {tx.user?.name ?? '—'}
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          'text-right font-medium tabular-nums',
-                          tx.type === 'INCOME' ? 'text-emerald-600' : 'text-destructive'
-                        )}
-                      >
-                        {tx.type === 'EXPENSE' ? '-' : '+'}
-                        {formatCurrency(tx.amount)}
-                      </TableCell>
-                      {isAdmin && (
-                        <TableCell>
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8"
-                              onClick={() => setEditing(tx)}
-                              aria-label="Editar"
-                            >
-                              <Pencil className="size-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-destructive hover:text-destructive"
-                              onClick={() => setDeleting(tx)}
-                              aria-label="Eliminar"
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
+              <div className="overflow-x-auto -mx-4 md:mx-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {columns.date && <TableHead className="w-[110px]">Fecha</TableHead>}
+                      {columns.type && <TableHead className="w-[110px]">Tipo</TableHead>}
+                      {columns.category && <TableHead>Categoría</TableHead>}
+                      {columns.description && <TableHead>Descripción</TableHead>}
+                      {columns.user && <TableHead className="w-[140px]">Usuario</TableHead>}
+                      {columns.amount && <TableHead className="text-right">Monto</TableHead>}
+                      {isAdmin && columns.actions && <TableHead className="w-[90px]" />}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map((tx) => (
+                      <TableRow key={tx.id}>
+                        {columns.date && <TableCell>{formatDate(tx.date)}</TableCell>}
+                        {columns.type && (
+                          <TableCell>
+                            <Badge variant={tx.type === 'INCOME' ? 'success' : 'danger'}>
+                              {tx.type === 'INCOME' ? 'Ingreso' : 'Gasto'}
+                            </Badge>
+                          </TableCell>
+                        )}
+                        {columns.category && (
+                          <TableCell className="truncate max-w-[160px]">
+                            {tx.category?.name ?? '—'}
+                          </TableCell>
+                        )}
+                        {columns.description && (
+                          <TableCell className="truncate max-w-[260px] text-muted-foreground">
+                            {tx.description || '—'}
+                          </TableCell>
+                        )}
+                        {columns.user && (
+                          <TableCell className="truncate max-w-[140px] text-muted-foreground text-xs">
+                            {tx.user?.name ?? '—'}
+                          </TableCell>
+                        )}
+                        {columns.amount && (
+                          <TableCell
+                            className={cn(
+                              'text-right font-medium tabular-nums',
+                              tx.type === 'INCOME' ? 'text-emerald-600' : 'text-destructive'
+                            )}
+                          >
+                            {tx.type === 'EXPENSE' ? '-' : '+'}
+                            {formatCurrency(tx.amount)}
+                          </TableCell>
+                        )}
+                        {isAdmin && columns.actions && (
+                          <TableCell>
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-9 md:size-8"
+                                onClick={() => setEditing(tx)}
+                                aria-label="Editar"
+                              >
+                                <Pencil className="size-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-9 md:size-8 text-destructive hover:text-destructive"
+                                onClick={() => setDeleting(tx)}
+                                aria-label="Eliminar"
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
 
               {pagination && pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4 px-1">
-                  <p className="text-xs text-muted-foreground">
+                <div className="flex flex-col gap-3 mt-4 px-1 md:flex-row md:items-center md:justify-between">
+                  <p className="text-xs text-muted-foreground text-center md:text-left">
                     Página {pagination.page} de {pagination.totalPages} · {pagination.total} total
                     {isFetching && (
                       <Loader2 className="size-3 inline animate-spin ml-2 text-muted-foreground" />
@@ -376,10 +410,9 @@ export function TransactionsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        updateParam('page', String(Math.max(1, pagination.page - 1)))
-                      }
+                      onClick={() => updateParam('page', String(Math.max(1, pagination.page - 1)))}
                       disabled={pagination.page <= 1}
+                      className="flex-1 md:flex-none"
                     >
                       <ChevronLeft className="size-4" />
                       Anterior
@@ -389,6 +422,7 @@ export function TransactionsPage() {
                       size="sm"
                       onClick={() => updateParam('page', String(pagination.page + 1))}
                       disabled={pagination.page >= pagination.totalPages}
+                      className="flex-1 md:flex-none"
                     >
                       Siguiente
                       <ChevronRight className="size-4" />

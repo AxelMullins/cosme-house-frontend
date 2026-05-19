@@ -63,11 +63,11 @@ export function CategoryForm({ initial, isPending, onSubmit }: CategoryFormProps
 
       <DialogFooter>
         <DialogClose asChild>
-          <Button type="button" variant="outline" disabled={isPending}>
+          <Button type="button" variant="outline" disabled={isPending} className="w-full sm:w-auto">
             Cancelar
           </Button>
         </DialogClose>
-        <Button type="submit" disabled={isPending}>
+        <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
           {isPending && <Loader2 className="size-4 animate-spin" />}
           {initial ? 'Guardar cambios' : 'Crear categoría'}
         </Button>

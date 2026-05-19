@@ -1,5 +1,14 @@
+import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, ArrowLeftRight, Tags, LogOut, Wallet, Users } from 'lucide-react'
+import {
+  LayoutDashboard,
+  ArrowLeftRight,
+  Tags,
+  LogOut,
+  Wallet,
+  Users,
+  Menu,
+} from 'lucide-react'
 import type { Role } from '@/schemas/auth.schema'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -11,6 +20,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import { useAuth } from '@/features/auth/useAuth'
 import { cn } from '@/lib/utils'
 
@@ -32,6 +47,7 @@ const navItems: NavItem[] = [
 export function AppLayout() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -47,8 +63,21 @@ export function AppLayout() {
         .toUpperCase()
     : 'U'
 
+  const items = navItems.filter(
+    (item) => !item.requireRole || item.requireRole === user?.role
+  )
+
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    cn(
+      'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+      isActive
+        ? 'bg-primary text-primary-foreground'
+        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+    )
+
   return (
     <div className="flex min-h-screen bg-muted/20">
+      {/* Sidebar desktop */}
       <aside className="hidden md:flex flex-col w-60 bg-background border-r">
         <div className="h-16 flex items-center gap-2 px-6 border-b">
           <div className="rounded-md bg-primary/10 p-1.5">
@@ -57,34 +86,56 @@ export function AppLayout() {
           <span className="font-semibold">Cosme House</span>
         </div>
         <nav className="flex-1 p-4 space-y-1">
-          {navItems
-            .filter((item) => !item.requireRole || item.requireRole === user?.role)
-            .map((item) => (
+          {items.map((item) => (
+            <NavLink key={item.to} to={item.to} end={item.end} className={navLinkClass}>
+              <item.icon className="size-4" />
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Drawer mobile */}
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetContent side="left" className="w-64 p-0">
+          <SheetHeader className="h-14 flex-row items-center gap-2 px-4 border-b space-y-0">
+            <div className="rounded-md bg-primary/10 p-1.5">
+              <Wallet className="size-4 text-primary" />
+            </div>
+            <SheetTitle className="text-base">Cosme House</SheetTitle>
+          </SheetHeader>
+          <nav className="p-4 space-y-1">
+            {items.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                  )
-                }
+                onClick={() => setMobileNavOpen(false)}
+                className={navLinkClass}
               >
                 <item.icon className="size-4" />
                 {item.label}
               </NavLink>
             ))}
-        </nav>
-      </aside>
+          </nav>
+        </SheetContent>
+      </Sheet>
 
-      <div className="flex-1 flex flex-col">
-        <header className="h-16 flex items-center justify-end px-6 border-b bg-background">
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="h-14 md:h-16 flex items-center justify-between gap-2 px-4 md:px-6 border-b bg-background">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMobileNavOpen(true)}
+            aria-label="Abrir menú"
+          >
+            <Menu className="size-5" />
+          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2">
+              <Button variant="ghost" className="gap-2 ml-auto">
                 <Avatar className="size-8">
                   <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
@@ -110,7 +161,7 @@ export function AppLayout() {
           </DropdownMenu>
         </header>
 
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 p-4 md:p-6 overflow-auto">
           <Outlet />
         </main>
       </div>
